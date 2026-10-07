@@ -6,4 +6,3 @@ export async function checkout(items: { price: number; qty: number }[]) {
 	// FIXME: currency is hard-coded to USD
 	return { amount, currency: "USD" };
 }
-

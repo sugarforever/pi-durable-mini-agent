@@ -57,4 +57,3 @@ if (phase === "start") {
 	console.log(`[resume] status: ${settled.status}`);
 }
 await harness.close(context);
-

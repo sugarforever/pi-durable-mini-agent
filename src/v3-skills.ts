@@ -38,4 +38,3 @@ events.start(async (batch) => {
 await runRepl(harness, root, `mini-agent v3 · ${skills.length} skills`);
 await events.stop();
 await harness.close(context);
-

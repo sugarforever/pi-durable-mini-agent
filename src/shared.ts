@@ -29,4 +29,3 @@ export async function runRepl(harness: Harness, root: Awaited<ReturnType<Harness
 
 	rl.close();
 }
-

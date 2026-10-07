@@ -18,4 +18,3 @@ const harness = await Harness.open(
 const root = await harness.root(context, { agent: { model: { provider: "deepseek", modelId: "deepseek-flash" }, cwd } });
 await runRepl(harness, root, "mini-agent v1 · DeepSeek");
 await harness.close(context);
-

@@ -8,4 +8,3 @@ description: Collect TODO and FIXME comments in the project and write a prioriti
 1. Find every `TODO` and `FIXME` comment under `src/` with `grep -rn "TODO\|FIXME" src`.
 2. Write `TODO-REPORT.md` with a table: file, line, kind (TODO / FIXME), the comment, and a priority (FIXME = high, TODO = normal).
 3. End your answer with the number of items found.
-

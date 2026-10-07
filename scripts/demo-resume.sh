@@ -14,4 +14,3 @@ wait "$pid" 2>/dev/null || true
 cat "$log"
 printf '\n--- restarting with the same SQLite database ---\n'
 node --no-warnings --experimental-strip-types src/v4-resume.ts resume "$db"
-

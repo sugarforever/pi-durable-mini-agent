@@ -26,4 +26,3 @@ events.start(async (batch) => {
 await runRepl(harness, root, "mini-agent v2 · CodingTools");
 await events.stop();
 await harness.close(context);
-
