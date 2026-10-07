@@ -1,0 +1,29 @@
+{
+  "name": "pi-durable-mini-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A four-stage Pi Durable agent example: model, SQLite, tools, skills, and crash recovery.",
+  "type": "module",
+  "scripts": {
+    "v1": "node --no-warnings --experimental-strip-types src/v1-basic.ts",
+    "v2": "cd workspace && node --no-warnings --experimental-strip-types ../src/v2-tools.ts",
+    "v3": "cd workspace && node --no-warnings --experimental-strip-types ../src/v3-skills.ts",
+    "v4:start": "node --no-warnings --experimental-strip-types src/v4-resume.ts start workspace/.resume.sqlite",
+    "v4:resume": "node --no-warnings --experimental-strip-types src/v4-resume.ts resume workspace/.resume.sqlite",
+    "demo:resume": "sh scripts/demo-resume.sh",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=22.6"
+  },
+  "dependencies": {
+    "@earendil-works/chord": "^1.0.4",
+    "@earendil-works/pi-ai": "^1.0.4",
+    "@earendil-works/pi-coding-agent": "^1.0.4",
+    "@earendil-works/pi-durable": "^1.0.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.3"
+  }
+}
