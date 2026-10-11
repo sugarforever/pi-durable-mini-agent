@@ -1,22 +1,25 @@
 # Pi Durable Mini Agent
 
-这个仓库是视频《用 Pi Durable 写自己的第一个 Agent》的完整可运行示例。我们从一个只会调用模型、用 SQLite 保存状态的最小 Agent 开始，分四步加入工具、Skills 和中断恢复。
+A small, runnable project that introduces Pi Durable in five incremental versions. It starts with a model-backed agent whose conversation is stored in SQLite, then adds coding tools, project skills, crash recovery, and an SSH-backed remote execution environment.
 
-## 你会做出什么
+## What you will build
 
-1. **V1：模型 + SQLite** — 用 DeepSeek 回答问题，把会话持久化到本地 SQLite。
-2. **V2：Tools** — 安装 `CodingTools`，让 Agent 可以 `read`、`write`、`edit` 和执行 `bash`。
-3. **V3：Skills** — 加载用户级和项目级 Skills，把操作规范加入 Agent 的 system prompt。
-4. **V4：中断恢复** — 杀掉正在执行长任务的进程，再打开同一份 SQLite；安全工具会重放，不安全的副作用不会自动重试。
+1. **V1: Model + SQLite** - ask DeepSeek a question and persist the conversation locally.
+2. **V2: Coding tools** - let the agent read, write, edit, and run shell commands.
+3. **V3: Skills** - load user-level and project-level skills into the agent instructions.
+4. **V4: Crash recovery** - terminate a process during tool execution, reopen the same SQLite database, and resume safely.
+5. **V5: Remote execution** - keep the Durable control plane, model credentials, and SQLite database local while the coding tools operate in a remote Linux workspace over SSH.
 
-V1–V3 使用 DeepSeek。V4 使用 Pi AI 的确定性 faux provider，目的是让中断恢复实验可以离线、稳定地重复运行。
+V1-V3 and V5 use DeepSeek. V4 uses Pi AI's deterministic faux provider so the recovery experiment is repeatable and does not require an API call.
 
-## 环境要求
+## Requirements
 
-- Node.js 22.6 或更新版本
-- 一个 DeepSeek API Key（仅 V1–V3 需要）
+- Node.js 22.6 or newer
+- npm
+- A DeepSeek API key for V1-V3 and V5
+- Docker and an SSH client for the self-contained V5 demo
 
-## 安装
+## Install
 
 ```bash
 git clone https://github.com/sugarforever/pi-durable-mini-agent.git
@@ -24,107 +27,202 @@ cd pi-durable-mini-agent
 npm install
 ```
 
-配置 Key：
+Export your API key before running a DeepSeek-backed example:
 
 ```bash
-export DEEPSEEK_API_KEY="你的 Key"
+export DEEPSEEK_API_KEY="your-key"
 ```
 
-也可以复制 `.env.example` 作为记录，但本项目不会自动读取 `.env`；请确保 Key 已进入当前 shell 环境。`.env` 和所有 SQLite 文件均已加入 `.gitignore`。
+The project does not load `.env` automatically. `.env`, SQLite databases, generated SSH keys, and project-level SSH state are ignored by Git.
 
-## V1：最小 Agent
-
-在仓库根目录运行：
+## V1: Minimal durable agent
 
 ```bash
 npm run v1
 ```
 
-输入一句话并回车。程序会在当前目录创建 `.mini-agent.sqlite`。输入 `exit` 退出；再次启动后仍然使用同一份数据库。
+Enter a message at the prompt. The program creates `.mini-agent.sqlite` in the repository root. Type `exit` to stop it; the next run reopens the same conversation database.
 
-## V2：添加 Tools
+## V2: Add coding tools
 
 ```bash
 npm run v2
 ```
 
-可以尝试：
+Try:
 
 ```text
-读取 src/checkout.ts，告诉我这里有哪些待办事项。
+Read src/checkout.ts and tell me which TODO items remain.
 ```
 
-这一版通过 `CodingTools` 给 Agent 安装文件读写、编辑和 shell 工具。终端会打印实际的工具调用。
+This version installs `CodingTools`, which gives the agent file read/write/edit operations and a shell tool. Tool calls are printed in the terminal.
 
-## V3：添加 Skills
-
-在仓库根目录运行：
+## V3: Add skills
 
 ```bash
 npm run v3
 ```
 
-输入：
+Try:
 
 ```text
-扫描项目中的 TODO 和 FIXME，按项目 Skill 生成报告。
+Scan the project for TODO and FIXME comments and create a report using the project skill.
 ```
 
-Agent 会发现 `workspace/.pi/skills/todo-report/SKILL.md`，按其中的步骤生成 `workspace/TODO-REPORT.md`。生成文件已被 Git 忽略，可以放心重复实验。
+The agent discovers `workspace/.pi/skills/todo-report/SKILL.md` and writes `workspace/TODO-REPORT.md`. The generated report is ignored by Git, so the experiment can be repeated safely.
 
-## V4：模拟进程崩溃与恢复
+## V4: Simulate a crash and resume
 
-回到仓库根目录：
+Run the automated experiment:
 
 ```bash
 npm run demo:resume
 ```
 
-脚本会：
+The script:
 
-1. 同时启动 `fetch_report` 和 `send_email` 两个慢工具；
-2. 在它们执行到一半时强制终止 Node.js 进程；
-3. 使用同一份 `workspace/.resume.sqlite` 重新启动 Harness；
-4. 调用 `harness.resume()` 恢复任务。
+1. starts the slow `fetch_report` and `send_email` tools;
+2. terminates the Node.js process while they are running;
+3. reopens the same `workspace/.resume.sqlite` database;
+4. calls `harness.resume()` to recover the task.
 
-`fetch_report` 声明为 `replay: "safe"`，因此会从头重放并完成；`send_email` 声明为 `replay: "unsafe"`，Harness 不会擅自重发可能已经产生外部副作用的操作。
+`fetch_report` declares `replay: "safe"`, so it can run again and finish. `send_email` declares `replay: "unsafe"`, so the harness does not automatically repeat an operation that may already have caused an external effect.
 
-如果想在两个终端中手工观察，可以分别执行：
+To observe the process manually in two terminals, run:
 
 ```bash
 npm run v4:start
 npm run v4:resume
 ```
 
-在第一个命令完成前终止它，再运行第二个命令。
+Terminate the first command before it finishes, then run the second command.
 
-## 项目结构
+## V5: Run coding tools in a remote environment
+
+V5 keeps these components on the local machine:
+
+- Pi Durable `Harness`
+- DeepSeek model calls and API credentials
+- conversation and task state in SQLite
+- SSH identity and `known_hosts`
+
+The built-in coding tools use `RemoteExecutionEnv`, so file and shell operations run in `/home/agent/workspace` on the SSH target.
+
+### 1. Start the demo SSH host
+
+The included Docker container provides a reproducible Ubuntu SSH target with an `agent` user:
+
+```bash
+npm run v5:setup
+```
+
+The default mapping is `127.0.0.1:2222` to port 22 in the container. If that host port is already in use, choose another one:
+
+```bash
+PI_REMOTE_PORT=2223 npm run v5:setup
+```
+
+The setup command creates a demo ED25519 client key under `experiment/keys/`, mounts only its public key into the container, starts the container, and prints the container's ED25519 host-key fingerprint. The private key remains on the host.
+
+### 2. Verify and trust the host key
+
+Before the first connection, scan the SSH server's host key:
+
+```bash
+npm run v5:trust
+```
+
+For a non-default port:
+
+```bash
+PI_REMOTE_PORT=2223 npm run v5:trust
+```
+
+Compare the displayed fingerprint with the fingerprint printed by `v5:setup`. Type `yes` only when they match. The accepted public key is written to the project-local `experiment/state/known_hosts`; the demo does not use your global `~/.ssh/known_hosts`.
+
+### 3. Start the durable agent
+
+```bash
+export DEEPSEEK_API_KEY="your-key"
+npm run v5:remote
+```
+
+If the demo container is listening on another port, pass the same value again:
+
+```bash
+PI_REMOTE_PORT=2223 npm run v5:remote
+```
+
+Try this prompt:
+
+```text
+Create hello.py in the workspace, make it print "hello from remote workspace", and run it.
+```
+
+Real model-selected tool calls are prefixed with `REMOTE →` in the terminal. The generated file exists in the container rather than in the local repository. Verify it independently with:
+
+```bash
+docker exec pi-durable-mini-agent-remote find /home/agent/workspace -maxdepth 2 -type f -print
+docker exec pi-durable-mini-agent-remote python3 /home/agent/workspace/hello.py
+```
+
+### Remote host and port configuration
+
+The V5 client accepts two optional environment variables:
+
+| Variable | Default | Purpose |
+|---|---:|---|
+| `PI_REMOTE_HOST` | `127.0.0.1` | SSH host used by `v5:trust` and `v5:remote` |
+| `PI_REMOTE_PORT` | `2222` | SSH port used by `v5:trust` and `v5:remote`; host port used by `v5:setup` |
+
+These names belong to this example project; Pi Durable and `pi-env` do not map them automatically. `src/v5-remote.ts` reads the variables and passes them to `createRemoteConfig()`, which builds `config.target` for `sshConnection()`.
+
+For an existing remote host, provision the `agent` account and authorized key yourself, then run:
+
+```bash
+PI_REMOTE_HOST=build.example.com PI_REMOTE_PORT=22 npm run v5:trust
+PI_REMOTE_HOST=build.example.com PI_REMOTE_PORT=22 npm run v5:remote
+```
+
+The demo still expects the private key at `experiment/keys/demo_key`, the remote workspace at `/home/agent/workspace`, and the SSH user to be `agent`. Change `src/remote-config.ts` if your deployment uses different values.
+
+## Project layout
 
 ```text
 src/
-  v1-basic.ts       # DeepSeek + SQLite
-  v2-tools.ts       # 安装 CodingTools
-  v3-skills.ts      # 加载并注入 Skills
-  v4-resume.ts      # 安全/不安全工具的恢复实验
-workspace/
-  .pi/skills/       # 项目级 Skill
-  src/              # 供 Agent 检查的示例代码
+  v1-basic.ts          # DeepSeek + SQLite
+  v2-tools.ts          # CodingTools
+  v3-skills.ts         # user and project skills
+  v4-resume.ts         # safe and unsafe recovery experiment
+  v5-remote.ts         # durable agent backed by RemoteExecutionEnv
+  remote-config.ts     # SSH target, project-local trust, and remote cwd
+  remote-events.ts     # concise remote tool-call logging
+experiment/
+  Dockerfile           # reproducible Ubuntu SSH target
+  entrypoint.sh        # configures the agent user's authorized key
 scripts/
-  demo-resume.sh    # 自动制造中断并恢复
+  demo-resume.sh       # terminates and resumes the V4 process
+  setup-remote.sh      # creates the demo key and starts the SSH container
+workspace/
+  .pi/skills/          # project-level skill used by V3
+  src/                 # sample files for the coding agent
 ```
 
-## 验证
+## Verify the project
 
 ```bash
+npm test
 npm run typecheck
 npm run demo:resume
 ```
 
-DeepSeek 示例会产生真实 API 调用和费用，因此没有放入默认自动化测试。
+The default tests do not invoke DeepSeek. Interactive DeepSeek examples make real API calls and may incur usage charges.
 
-## 安全说明
+## Security notes
 
-`CodingTools` 可以读取、修改当前工作目录中的文件并执行命令。请在这个示例仓库或其他受控目录中运行，不要把不可信内容直接交给拥有敏感凭据的 Agent。
+`CodingTools` can read, modify, and execute files in its configured workspace. Run these examples only in the repository or another controlled environment.
+
+The included Docker container demonstrates SSH and remote execution behavior. It is not a production sandbox. Production isolation depends on the container runtime, mounts, network policy, privileges, host configuration, and how secrets are passed to remote commands.
 
 ## License
 

@@ -6,8 +6,13 @@ import { AssistantEntry, type Harness } from "@earendil-works/pi-durable";
 
 export const context = BACKGROUND_CONTEXT;
 
-export async function runRepl(harness: Harness, root: Awaited<ReturnType<Harness["root"]>>, label: string) {
-	console.log(`${label} · SQLite ${join(process.cwd(), ".mini-agent.sqlite")}`);
+export async function runRepl(
+	harness: Harness,
+	root: Awaited<ReturnType<Harness["root"]>>,
+	label: string,
+	databaseFile = join(process.cwd(), ".mini-agent.sqlite"),
+) {
+	console.log(`${label} · SQLite ${databaseFile}`);
 	const rl = createInterface({ input: process.stdin });
 	if (process.stdin.isTTY) process.stdout.write("\n❯ ");
 

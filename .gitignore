@@ -6,3 +6,5 @@ node_modules/
 *.sqlite-shm
 *.sqlite-wal
 TODO-REPORT.md
+experiment/keys/
+experiment/state/
